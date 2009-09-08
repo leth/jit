@@ -52,6 +52,18 @@ class Build():
                             'Graph.Plot',
                             'Loader', 
                             'Animation'],
+            
+            'QuadTree':    ['Core'],
+                            
+            'ForceGraph':  ['Core',
+                            'Canvas', 
+                            'Complex',
+                            'Graph',
+                            'Graph.Op',
+                            'Graph.Plot',
+                            'Loader', 
+                            'Animation',
+                            'QuadTree'],
                             
             'Treemap':      ['Core']
         }
