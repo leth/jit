@@ -10,7 +10,7 @@ ForceGraph = new Class({
 			Node: {
 				overridable: false,
 				type: 'circle',
-				dim: 3,
+				dim: 10,
 				color: '#ccb',
 				width: 5,
 				height: 5,
@@ -21,9 +21,9 @@ ForceGraph = new Class({
 				overridable: false,
 				type: 'line',
 				color: '#f00',
-				lineWidth: 1,
+				lineWidth: 2,
 				
-				naturalLength: 50,
+				naturalLength: 75,
 				restoringForce: 2
 			},
 			
@@ -413,19 +413,7 @@ ForceGraph.Plot.NodeTypes = new Class({
 		canvas.path('fill', function(context) {
 			context.arc(pos.x, pos.y, nodeDim, 0, Math.PI*2, true);
 		});
-		
-		var ctx = canvas.getCtx();
-		if (ctx.mozDrawText) {
-			ctx.save();
-			var w = ctx.mozMeasureText(node.id);
-			
-			ctx.translate(pos.x - (w/2), pos.y);
-			
-			ctx.fillStyle = 'rgb(0,0,0)';
-			ctx.mozDrawText(node.id);
-			ctx.restore();
-		}
-	},
+	}
 });
 
 ForceGraph.Plot.EdgeTypes = new Class({
