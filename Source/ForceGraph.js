@@ -1,7 +1,18 @@
 ForceGraph = new Class({
+	Extends: Graph,
+	
 	'initialize': function(canvas, controller)
 	{
-		var config= {
+		this.parent({
+			'complex': true,
+			'Node': {
+				'selected': false,
+				'exist': true,
+				'drawn': true
+			}
+		});
+		
+		var config = {
 			labelContainer: canvas.id + '-label',
 			interpolation: 'linear',
 			levelDistance: 100,
@@ -12,8 +23,8 @@ ForceGraph = new Class({
 				type: 'circle',
 				dim: 10,
 				color: '#ccb',
-				width: 5,
-				height: 5,
+				width: 10,
+				height: 10,
 				lineWidth: 1
 			},
 			
@@ -46,15 +57,6 @@ ForceGraph = new Class({
 		};
 
 		this.controller = this.config = $merge(config, innerController, controller);
-		this.graphOptions = {
-			'complex': true,
-			'Node': {
-				'selected': false,
-				'exist': true,
-				'drawn': true
-			}
-		};
-		this.graph = new Graph(this.graphOptions);
 		this.fx = new ForceGraph.Plot(this);
 		this.op = new ForceGraph.Op(this);
 		this.json = null;
@@ -89,7 +91,7 @@ ForceGraph = new Class({
 		var forces = {};
 		if (window.console != null)
 			console.time('foo');
-		Graph.Util.eachNode(this.graph, function(node){
+		Graph.Util.eachNode(this, function(node){
 			positions[node.id] = {x: node.pos.x, y: node.pos.y};
 			forces[node.id] = {x: 0, y: 0};
 		});
@@ -162,7 +164,7 @@ ForceGraph = new Class({
 			console.timeEnd('foo');
 			console.log(i);
 		}
-		Graph.Util.eachNode(this.graph, function(node){
+		Graph.Util.eachNode(this, function(node){
 			for(var i=0; i<propArray.length; i++)
 				node[propArray[i]] = $C(positions[node.id].x, positions[node.id].y);
 		});
@@ -174,12 +176,12 @@ ForceGraph = new Class({
 		
 		var self = this;
 		
-		Graph.Util.eachNode(this.graph, function(node){
+		Graph.Util.eachNode(this, function(node){
 			visited[node.id] = {};
 			forces[node.id] = {x: 0, y: 0};
 		});
 		
-		Graph.Util.eachNode(this.graph, function(node){
+		Graph.Util.eachNode(this, function(node){
 			Graph.Util.eachAdjacency(node, function(adj) {
 				if (visited[adj.nodeFrom.id][adj.nodeTo.id] == true ||
 					visited[adj.nodeTo.id][adj.nodeFrom.id] == true)
@@ -236,13 +238,13 @@ ForceGraph = new Class({
 		
 		var self = this;
 		
-		Graph.Util.eachNode(this.graph, function(node){
+		Graph.Util.eachNode(this, function(node){
 			forces[node.id] = {x: 0, y: 0};
 			visited[node.id] = {};
 		});
 
-		Graph.Util.eachNode(this.graph, function(nodeA){
-			Graph.Util.eachNode(self.graph, function(nodeB){
+		Graph.Util.eachNode(this, function(nodeA){
+			Graph.Util.eachNode(self, function(nodeB){
 				if (nodeA == nodeB || nodeA.id == nodeB)
 					return;
 					
@@ -306,7 +308,7 @@ ForceGraph = new Class({
 		var m = 1;  // mass
 		var f = 10; // friction
 		
-		Graph.Util.eachNode(this.graph, function(node){
+		Graph.Util.eachNode(this, function(node){
 			// Is this sensible?
 			var fX = force[node.id].x * m / f * (0.4 * Math.random() + 0.8);
 			var fY = force[node.id].y * m / f * (0.4 * Math.random() + 0.8);
@@ -344,10 +346,10 @@ ForceGraph.Plot = new Class({
 	
 		placeLabel: function(tag, node, controller) {
 			var pos = node.pos.getc(true), canvas = this.viz.canvas; 
-			var radius= canvas.getSize();
+			var size = canvas.getSize();
 			var labelPos= {
-				x: Math.round(pos.x + radius.width/2),
-				y: Math.round(pos.y + radius.height/2)
+				x: Math.round(pos.x + size.width/2),
+				y: Math.round(pos.y + size.height/2)
 			};
 			var style = tag.style;
 			style.left = labelPos.x + 'px';
@@ -359,49 +361,51 @@ ForceGraph.Plot = new Class({
  
 // this has reworked visiting logic because the graphs might be cyclic.
 // outside the declaration in order to override 'Implements'
-ForceGraph.Plot.prototype.plot = function(opt, animating) {
+ForceGraph.Plot.implement({
+	plot: function(opt, animating) {
 	
-	var viz = this.viz, 
-	aGraph = viz.graph, 
-	canvas = viz.canvas, 
-	id = viz.root, 
-	that = this, 
-	ctx = canvas.getCtx(), 
-	GUtil = Graph.Util;
-	opt = opt || this.viz.controller;
-	opt.clearCanvas && canvas.clear();
+		var viz = this.viz, 
+		aGraph = viz, 
+		canvas = viz.canvas, 
+		id = viz.root, 
+		that = this, 
+		ctx = canvas.getCtx(), 
+		GUtil = Graph.Util;
+		opt = opt || this.viz.controller;
+		opt.clearCanvas && canvas.clear();
 
-	var visited = {};
-	GUtil.eachNode(aGraph, function(node) {
-		GUtil.eachAdjacency(node, function(adj) {
-			var nodeTo = adj.nodeTo;
-			if(visited[nodeTo.id] !== true && node.drawn && nodeTo.drawn) {
-				!animating && opt.onBeforePlotLine(adj);
-				ctx.save();
-				ctx.globalAlpha = Math.min(Math.min(node.alpha, nodeTo.alpha), adj.alpha);
-				that.plotLine(adj, canvas, animating);
-				ctx.restore();
-				!animating && opt.onAfterPlotLine(adj);
+		var visited = {};
+		GUtil.eachNode(aGraph, function(node) {
+			GUtil.eachAdjacency(node, function(adj) {
+				var nodeTo = adj.nodeTo;
+				if(visited[nodeTo.id] !== true && node.drawn && nodeTo.drawn) {
+					!animating && opt.onBeforePlotLine(adj);
+					ctx.save();
+					ctx.globalAlpha = Math.min(Math.min(node.alpha, nodeTo.alpha), adj.alpha);
+					that.plotLine(adj, canvas, animating);
+					ctx.restore();
+					!animating && opt.onAfterPlotLine(adj);
+				}
+			});
+			ctx.save();
+			if(node.drawn) {
+				ctx.globalAlpha = node.alpha;
+				!animating && opt.onBeforePlotNode(node);
+				that.plotNode(node, canvas, animating);
+				!animating && opt.onAfterPlotNode(node);
 			}
+			if(!that.labelsHidden && opt.withLabels) {
+				if(node.drawn && ctx.globalAlpha >= 0.95) {
+					that.plotLabel(canvas, node, opt);
+				} else {
+					that.hideLabel(node, false);
+				}
+			}
+			ctx.restore();
+			visited[node.id] = true;
 		});
-		ctx.save();
-		if(node.drawn) {
-			ctx.globalAlpha = node.alpha;
-			!animating && opt.onBeforePlotNode(node);
-			that.plotNode(node, canvas, animating);
-			!animating && opt.onAfterPlotNode(node);
-		}
-		if(!that.labelsHidden && opt.withLabels) {
-			if(node.drawn && ctx.globalAlpha >= 0.95) {
-				that.plotLabel(canvas, node, opt);
-			} else {
-				that.hideLabel(node, false);
-			}
-		}
-		ctx.restore();
-		visited[node.id] = true;
-	});
-},
+	}
+});
 
 ForceGraph.Plot.NodeTypes = new Class({
 	'none': function() {},
