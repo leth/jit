@@ -62,8 +62,7 @@ class Build():
                             'Graph.Op',
                             'Graph.Plot',
                             'Loader', 
-                            'Animation',
-                            'QuadTree'],
+                            'Animation'],
                             
             'Treemap':      ['Core']
         }

@@ -240,6 +240,8 @@ ForceGraph = new Class({
 			visited[node.id] = {};
 		});
 
+		// TODO optimise this with an implementation of the FADE paper
+		// This will do for now, but is not very efficient on large graphs O(n^2)
 		Graph.Util.eachNode(this, function(nodeA){
 			Graph.Util.eachNode(self, function(nodeB){
 				if (nodeA == nodeB || nodeA.id == nodeB)
@@ -275,8 +277,8 @@ ForceGraph = new Class({
 					angle = Math.atan2(Ay, Ax);
 				}
 				else
-				{	// TODO make configurable.
-					d = Math.random();
+				{	// Prevent divide by zero
+					d = Math.random() + .0001;
 					angle = Math.random() * 2 * Math.PI;
 				}
 				
@@ -336,6 +338,9 @@ ForceGraph = new Class({
 			for(var i=0; i<propArray.length; i++)
 				node[propArray[i]] = $C(node[startProperty].x -= x, node[startProperty].y -= y);
 		});
+		
+		// return the offset just incase something wants to know what it was.
+		return {x: x, y: y};
 	}
 });
 
@@ -343,9 +348,9 @@ ForceGraph.Op = new Class({
  
 	Implements: Graph.Op,
  
-		initialize: function(viz) {
-			this.viz = viz;
-		}
+	initialize: function(viz) {
+		this.viz = viz;
+	}
 });
 
 ForceGraph.Plot = new Class({
@@ -377,8 +382,8 @@ ForceGraph.Plot = new Class({
 		}
 });
  
-// this has reworked visiting logic because the graphs might be cyclic.
-// outside the declaration in order to override 'Implements'
+// this has reworked visiting logic and flags because the graphs are not traversed treewise
+// outside the declaration in order to override the 'Implements' keyword
 ForceGraph.Plot.implement({
 	plot: function(opt, animating) {
 	
