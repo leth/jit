@@ -1,20 +1,10 @@
 ForceGraph = new Class({
-	Extends: Graph,
-	
 	'initialize': function(canvas, controller)
 	{
-		this.parent({
-			'complex': true,
-			'Node': {
-				'selected': false,
-				'exist': true,
-				'drawn': true
-			}
-		});
-		
 		var config = {
 			labelContainer: canvas.id + '-label',
 			interpolation: 'linear',
+			modes: ['linear'],
 			levelDistance: 100,
 			withLabels: true,
 
@@ -63,7 +53,16 @@ ForceGraph = new Class({
 		this.canvas = canvas;
 		this.root = null;
 		this.busy = false;
-		this.parent = false;
+		this.graph = this;
+		
+		$extend(this, new Graph({
+			'complex': true,
+			'Node': {
+				'selected': false,
+				'exist': true,
+				'drawn': true
+			}
+		}));
 	},
 	
 	refresh: function() {
@@ -89,8 +88,7 @@ ForceGraph = new Class({
 		var propArray = $splat(property);
 		var positions = {};
 		var forces = {};
-		if (window.console != null)
-			console.time('foo');
+
 		Graph.Util.eachNode(this, function(node){
 			positions[node.id] = {x: node.pos.x, y: node.pos.y};
 			forces[node.id] = {x: 0, y: 0};
@@ -98,9 +96,9 @@ ForceGraph = new Class({
 		
 		// TODO make configurable
 		var quietCount = 0;
-		var quietLimit = 5;
+		var quietLimit = 10;
 		var prevForce = 0;
-		var forceThreshold = 20;
+		var forceThreshold = 10;
 		
 		// TODO make configurable
 		var i;
@@ -138,7 +136,7 @@ ForceGraph = new Class({
 			forceTotal += parts[1];
 			
 			// TODO make configurable
-			var max_force = 20;
+			var max_force = 50;
 			for (var id in positions)
 			{
 				positions[id].x += Math.max(-max_force, Math.min(max_force, forces[id].x)) * .4;
@@ -147,6 +145,8 @@ ForceGraph = new Class({
 				forces[id].y = 0;
 			}
 			// console.log(i, Math.abs(forceTotal - prevForce), forceTotal, prevForce);
+			
+			// TODO implement force keeping things away from the edge of the canvas
 			
 			if (Math.abs(forceTotal - prevForce) < forceThreshold) {
 				quietCount++;
@@ -160,10 +160,7 @@ ForceGraph = new Class({
 				
 			prevForce = forceTotal;
 		}
-		if (window.console != null){
-			console.timeEnd('foo');
-			console.log(i);
-		}
+
 		Graph.Util.eachNode(this, function(node){
 			for(var i=0; i<propArray.length; i++)
 				node[propArray[i]] = $C(positions[node.id].x, positions[node.id].y);
@@ -264,7 +261,7 @@ ForceGraph = new Class({
 				var d_sq = (Ax * Ax) + (Ay * Ay);
 				// TODO make configurable.
 				var max_dist = self.controller.Edge.naturalLength;
-				var max_dist_sq = (max_dist * max_dist) * 1.5;
+				var max_dist_sq = (max_dist * max_dist) * 3;
 				
 				var d, angle;
 				// TODO make configurable.
@@ -318,6 +315,27 @@ ForceGraph = new Class({
 		});
 		
 		return [forces, forceSum];
+	},
+	
+	computeCenterByMass: function(startProperty, endProperties)
+	{
+		var propArray = $splat(endProperties);
+		var x =0, y=0;
+		var count = 0;
+		
+		Graph.Util.eachNode(this, function(node){
+			x += node[startProperty].x
+			y += node[startProperty].y
+			count++;
+		});
+		
+		// average
+		x /= count; y /= count;
+		
+		Graph.Util.eachNode(this, function(node){
+			for(var i=0; i<propArray.length; i++)
+				node[propArray[i]] = $C(node[startProperty].x -= x, node[startProperty].y -= y);
+		});
 	}
 });
 
@@ -364,13 +382,14 @@ ForceGraph.Plot = new Class({
 ForceGraph.Plot.implement({
 	plot: function(opt, animating) {
 	
-		var viz = this.viz, 
-		aGraph = viz, 
-		canvas = viz.canvas, 
-		id = viz.root, 
-		that = this, 
-		ctx = canvas.getCtx(), 
-		GUtil = Graph.Util;
+		var viz = this.viz;
+		this.graph = viz;
+		var aGraph = viz;
+		var canvas = viz.canvas;
+		var id = viz.root;
+		var that = this;
+		var ctx = canvas.getCtx();
+		var GUtil = Graph.Util;
 		opt = opt || this.viz.controller;
 		opt.clearCanvas && canvas.clear();
 
