@@ -100,9 +100,14 @@ ForceGraph = new Class({
 		var prevForce = 0;
 		var forceThreshold = 10;
 		
+		var size = this.canvas.getSize();
+		size.width /= 2; size.height /= 2;
+		size.width  -= this.controller.Node.width + 5;
+		size.height -= this.controller.Node.height + 5;
+		
 		// TODO make configurable
 		var i;
-		for (i=0; i < 1000; i++) {
+		for (i=0; i < 500; i++) {
 			var parts, forceTotal = 0;
 		
 			parts = this.computeEdgeForceStep(positions);
@@ -139,8 +144,10 @@ ForceGraph = new Class({
 			var max_force = 50;
 			for (var id in positions)
 			{
-				positions[id].x += Math.max(-max_force, Math.min(max_force, forces[id].x)) * .4;
-				positions[id].y += Math.max(-max_force, Math.min(max_force, forces[id].y)) * .4;
+				positions[id].x += Math.max(-max_force, Math.min(max_force, forces[id].x)) * 0.4;
+				positions[id].y += Math.max(-max_force, Math.min(max_force, forces[id].y)) * 0.4;
+				positions[id].x =  Math.max(Math.min(positions[id].x, size.width ), -size.width);
+				positions[id].y =  Math.max(Math.min(positions[id].y, size.height), -size.height);
 				forces[id].x = 0;
 				forces[id].y = 0;
 			}
@@ -205,12 +212,10 @@ ForceGraph = new Class({
 					var Axy = Math.abs(Ax) + Math.abs(Ay);
 					Sx /= Axy; Sy /= Axy;
 				} else {
-					// For safety, assume they can't really be on exactly the same point
-					d = 1;
 					// pick a random angle
-					var angle = Math.random() * 2 * Math.PI; // TODO mootools
-					Sx = Math.cos(angle);
-					Sy = Math.sin(angle);
+					var angle = Math.random() * 2 * Math.PI;
+					Sx = Math.sin(angle);
+					Sy = Math.cos(angle);
 				}
 				
 				var force = k * (d - l);
@@ -278,7 +283,7 @@ ForceGraph = new Class({
 				}
 				else
 				{	// Prevent divide by zero
-					d = Math.random() + .0001;
+					d = Math.random() + 0.0001;
 					angle = Math.random() * 2 * Math.PI;
 				}
 				
@@ -326,8 +331,8 @@ ForceGraph = new Class({
 		var count = 0;
 		
 		Graph.Util.eachNode(this, function(node){
-			x += node[startProperty].x
-			y += node[startProperty].y
+			x += node[startProperty].x;
+			y += node[startProperty].y;
 			count++;
 		});
 		
@@ -341,6 +346,43 @@ ForceGraph = new Class({
 		
 		// return the offset just incase something wants to know what it was.
 		return {x: x, y: y};
+	},
+	forceWithinBounds: function(startProperty, endProperties)
+	{
+		startProperty = startProperty || 'endPos';
+		var propArray = $splat(endProperties || 'endPos');
+		
+		var size = this.canvas.getSize();
+		// size.width /= 2; size.height /= 2;
+		size.width  -= 2 * (this.controller.Node.width  + 5);
+		size.height -= 2 * (this.controller.Node.height + 5);
+		
+		var xMin, yMin, xMax, yMax;
+		xMin = yMin = xMax = yMax = 0;
+		
+		Graph.Util.eachNode(this, function(node){
+			xMin = Math.min(xMin, node[startProperty].x);
+			xMax = Math.max(xMax, node[startProperty].x);
+			yMax = Math.max(yMax, node[startProperty].y);
+			yMin = Math.min(yMin, node[startProperty].y);
+		});
+		
+		var xScale = (xMax - xMin) <= size.width  ? 1 : size.width  / (xMax - xMin);
+		var yScale = (yMax - yMin) <= size.height ? 1 : size.height / (yMax - yMin);
+		
+		var xTrans = 0, yTrans = 0;
+		if      (xMin * xScale < -size.width  /2) xTrans = - size.width   /2 - xMin * xScale;
+		else if (xMax * xScale >  size.width  /2) xTrans =   size.width   /2 - xMax * xScale;
+		if      (yMin * yScale < -size.height /2) yTrans = - size.height  /2 - yMin * yScale;
+		else if (yMax * yScale >  size.height /2) yTrans =   size.height  /2 - yMax * yScale;
+		
+		Graph.Util.eachNode(this, function(node){
+			for(var i=0; i<propArray.length; i++)
+				node[propArray[i]] = $C(
+					node[startProperty].x * xScale + xTrans,
+					node[startProperty].y * yScale + yTrans
+					);
+		});
 	}
 });
 
